@@ -1,0 +1,15 @@
+export default defineAppConfig({
+  pages: [
+    'pages/home/index',
+    'pages/questionnaire/index',
+    'pages/report/index',
+    'pages/about/index'
+  ],
+  window: {
+    navigationBarTitleText: '专业方向决策',
+    navigationBarBackgroundColor: '#0f172a',
+    navigationBarTextStyle: 'white',
+    backgroundColor: '#f8fafc',
+    backgroundTextStyle: 'light'
+  }
+});

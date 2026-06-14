@@ -1,0 +1,24 @@
+.about-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.about-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-title {
+  font-size: 34px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.about-copy,
+.about-item {
+  font-size: 28px;
+  line-height: 1.7;
+  color: #475569;
+}

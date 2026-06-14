@@ -1,0 +1,1 @@
+.about-page{display:flex;flex-direction:column;gap:48rpx}.about-list{display:flex;flex-direction:column;gap:32rpx}.about-title{color:#0f172a;font-size:68rpx;font-weight:600}.about-copy,.about-item{color:#475569;font-size:56rpx;line-height:1.7}

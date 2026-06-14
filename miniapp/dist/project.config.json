@@ -1,0 +1,14 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "major-direction-miniapp",
+  "description": "高考专业方向决策微信小程序",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": false
+  }
+}
