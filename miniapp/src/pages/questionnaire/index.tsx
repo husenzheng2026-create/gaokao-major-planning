@@ -1,6 +1,6 @@
 import { Button, ScrollView, Text, View } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 
 import {
@@ -61,7 +61,9 @@ export default function QuestionnairePage() {
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswersState>({});
   const [submitError, setSubmitError] = useState('');
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const [seed] = useState(() => Date.now());
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questions = useMemo(
     () =>
@@ -95,6 +97,7 @@ export default function QuestionnairePage() {
   const progress = Math.round(((stepIndex + 1) / questions.length) * 100);
   const canProceed = isStepValid(currentQuestion, currentValue);
   const isLastStep = stepIndex === questions.length - 1;
+  const isMultiSelect = currentQuestion.type === 'multi-select';
 
   const directionToIdMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -104,6 +107,11 @@ export default function QuestionnairePage() {
 
   const updateValue = (next: AnswerValue) => {
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: next }));
+  };
+
+  const goNext = () => {
+    setStepIndex((index) => Math.min(questions.length - 1, index + 1));
+    setSubmitError('');
   };
 
   const toggleMulti = (option: string) => {
@@ -171,9 +179,9 @@ export default function QuestionnairePage() {
     };
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (nextAnswers?: AnswersState) => {
     setSubmitError('');
-    const payload = normalizeForSchema(answers);
+    const payload = normalizeForSchema(nextAnswers ?? answers);
     const result = questionnaireSchema.safeParse(payload);
     if (!result.success) {
       setSubmitError('仍有题目未填写完整，请继续补全。');
@@ -186,20 +194,57 @@ export default function QuestionnairePage() {
     Taro.navigateTo({ url: '/pages/report/index' });
   };
 
+  const handleSingleSelect = (option: string) => {
+    if (isAdvancing) return;
+
+    const nextAnswers = {
+      ...answers,
+      [currentQuestion.id]: option
+    };
+
+    setAnswers(nextAnswers);
+    setIsAdvancing(true);
+    setSubmitError('');
+
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+
+    advanceTimerRef.current = setTimeout(() => {
+      setIsAdvancing(false);
+      if (isLastStep) {
+        handleSubmit(nextAnswers);
+        return;
+      }
+      goNext();
+    }, 180);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) {
+        clearTimeout(advanceTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <ScrollView scrollY className="questionnaire-scroll">
       <View className="page-shell questionnaire-page">
         <View className="questionnaire-progress">
-          <Text className="questionnaire-step">
+          <Text className="questionnaire-progress__meta">
             第 {stepIndex + 1} / {questions.length} 题
           </Text>
-          <Text className="questionnaire-step">已完成 {progress}%</Text>
+          <Text className="questionnaire-progress__meta">已完成 {progress}%</Text>
         </View>
         <View className="progress-bar">
           <View className="progress-bar__inner" style={{ width: `${progress}%` }} />
         </View>
 
         <View className="card questionnaire-card">
+          <Text className="page-tag questionnaire-tag">
+            {isMultiSelect ? `请选 ${currentQuestion.min ?? 1}${currentQuestion.max ? ` 到 ${currentQuestion.max}` : ''} 项` : '单选，点一下就会进入下一题'}
+          </Text>
           <Text className="questionnaire-title">{currentQuestion.title}</Text>
           {currentQuestion.description ? (
             <Text className="questionnaire-description">{currentQuestion.description}</Text>
@@ -219,13 +264,15 @@ export default function QuestionnairePage() {
                   onClick={() =>
                     currentQuestion.type === 'multi-select'
                       ? toggleMulti(option)
-                      : updateValue(option)
+                      : handleSingleSelect(option)
                   }
                 >
-                  <Text className="questionnaire-option__indicator">
-                    {selected ? '●' : '○'}
-                  </Text>
-                  <Text className="questionnaire-option__label">{option}</Text>
+                  <View className="questionnaire-option__main">
+                    <Text className="questionnaire-option__label">{option}</Text>
+                    <Text className={`questionnaire-option__pill ${selected ? 'is-selected' : ''}`}>
+                      {selected ? '已选' : isMultiSelect ? '可多选' : '选择'}
+                    </Text>
+                  </View>
                 </View>
               );
             })}
@@ -233,23 +280,42 @@ export default function QuestionnairePage() {
 
           {submitError ? <Text className="questionnaire-error">{submitError}</Text> : null}
 
+          {isMultiSelect ? (
+            <View className="questionnaire-selection-tip">
+              <Text className="questionnaire-selection-tip__text">
+                当前已选 {Array.isArray(currentValue) ? currentValue.length : 0} 项
+              </Text>
+              {currentQuestion.min ? (
+                <Text className="questionnaire-selection-tip__text">
+                  至少选择 {currentQuestion.min} 项后继续
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
           <View className="questionnaire-actions">
             <Button
-              className="button-secondary"
+              className="button-ghost"
               disabled={stepIndex === 0}
               onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
             >
-              上一步
+              返回上一题
             </Button>
-            <Button
-              className="button-primary"
-              disabled={!canProceed}
-              onClick={() =>
-                isLastStep ? handleSubmit() : setStepIndex((index) => Math.min(questions.length - 1, index + 1))
-              }
-            >
-              {isLastStep ? '生成报告' : '下一步'}
-            </Button>
+            {isMultiSelect ? (
+              <Button
+                className="button-primary"
+                disabled={!canProceed}
+                onClick={() => (isLastStep ? handleSubmit() : goNext())}
+              >
+                {isLastStep ? '生成报告' : '继续'}
+              </Button>
+            ) : (
+              <View className="questionnaire-actions__hint">
+                <Text className="questionnaire-actions__hint-text">
+                  选中后会自动进入下一题
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>

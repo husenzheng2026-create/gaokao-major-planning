@@ -1,51 +1,70 @@
 .home-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .home-hero {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-top: 20px;
-}
-
-.home-eyebrow {
-  font-size: 24px;
-  color: #475569;
-  letter-spacing: 6px;
-}
-
-.home-title {
-  font-size: 56px;
-  line-height: 1.2;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.home-subtitle,
-.home-card-copy,
-.home-disclaimer {
-  font-size: 28px;
-  line-height: 1.7;
-  color: #475569;
+  gap: 16px;
+  padding-top: 8px;
 }
 
 .home-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .home-card-title {
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 600;
-  color: #0f172a;
+  color: #14213d;
+}
+
+.home-card-copy,
+.home-disclaimer,
+.home-footer__hint,
+.home-point__text {
+  font-size: 26px;
+  line-height: 1.7;
+  color: #5c6f91;
+}
+
+.home-card--trust {
+  gap: 20px;
+}
+
+.home-point {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.home-point__index {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #edf3fb;
+  color: #35507d;
+  text-align: center;
+  line-height: 44px;
+  font-size: 22px;
+  font-weight: 600;
 }
 
 .home-actions {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.home-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 4px 16px;
 }

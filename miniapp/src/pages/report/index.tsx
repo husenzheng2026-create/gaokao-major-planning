@@ -32,7 +32,9 @@ export default function ReportPage() {
   if (state.kind === 'loading') {
     return (
       <View className="page-shell report-page">
-        <Text className="report-copy">正在加载报告…</Text>
+        <View className="card report-card report-card--center">
+          <Text className="report-copy">正在整理你的诊断结果…</Text>
+        </View>
       </View>
     );
   }
@@ -85,15 +87,22 @@ export default function ReportPage() {
     <ScrollView scrollY className="report-scroll">
       <View className="page-shell report-page">
         <View className="report-hero">
-          <Text className="report-eyebrow">一句话判断</Text>
-          <Text className="report-headline">{report.expertVerdict.headline}</Text>
+          <Text className="page-tag">你的判断类型</Text>
           <Text className="report-archetype">{report.archetype}</Text>
+          <Text className="report-headline">{report.expertVerdict.headline}</Text>
+          <Text className="report-copy">{report.archetypeSummary}</Text>
+        </View>
+
+        <View className="card report-card report-card--focus">
+          <Text className="report-section-title">为什么会这样</Text>
           <Text className="report-copy">{report.expertVerdict.diagnosis}</Text>
+          <Text className="report-copy report-copy--muted">{report.expertVerdict.whyThisOrder}</Text>
         </View>
 
         <View className="card report-card">
-          <Text className="report-section-title">为什么我会这样劝你</Text>
-          <Text className="report-copy">{report.expertVerdict.whyThisOrder}</Text>
+          <Text className="report-section-title">你现在最该先看哪边</Text>
+          <Text className="report-copy">{report.summary.decisionStyle}</Text>
+          <Text className="report-copy report-copy--muted">{report.summary.coreConflict}</Text>
         </View>
 
         <View className="card report-card report-card--warn">
@@ -146,7 +155,15 @@ export default function ReportPage() {
           <Text className="report-source">{report.marketInsights.methodologyNote}</Text>
         </View>
 
-        <Text className="report-source">{disclaimer}</Text>
+        <View className="report-footer bottom-safe-area">
+          <Button
+            className="button-primary"
+            onClick={() => Taro.redirectTo({ url: '/pages/questionnaire/index' })}
+          >
+            重新做一次
+          </Button>
+          <Text className="report-source">{disclaimer}</Text>
+        </View>
       </View>
     </ScrollView>
   );
