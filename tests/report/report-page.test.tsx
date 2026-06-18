@@ -23,6 +23,12 @@ const validPayload = {
   unwantedWorkStyles: ['不想高压加班']
 };
 
+// 防回归：只选 2 个方向时，不应凭空出现"先别碰"卡片
+const twoDirectionPayload = {
+  ...validPayload,
+  selectedDirections: ['cs-ai', 'engineering-auto'] as string[]
+};
+
 describe('ReportPage', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
@@ -51,7 +57,7 @@ describe('ReportPage', () => {
       await screen.findByRole('heading', { name: '你最容易后悔的点' })
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: '接下来 48 小时，只做这两刀' })
+      await screen.findByRole('heading', { name: /接下来 48 小时，只做这.[刀]/ })
     ).toBeInTheDocument();
     expect(
       await screen.findByRole('heading', { name: '客观现实层' })
@@ -68,5 +74,24 @@ describe('ReportPage', () => {
     expect(
       await screen.findByText(/不承诺录取结果、就业结果、薪资结果/)
     ).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/你自己|家长把|放进清单/u)).length
+    ).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText(/后悔/u)).length
+    ).toBeGreaterThan(0);
+  });
+
+  // 防回归：只选 2 个方向时，holdRecommendation 返回 undefined，页面不应出现"先别碰"
+  it('does not show avoid card when only two directions are selected', async () => {
+    window.sessionStorage.clear();
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(twoDirectionPayload));
+    render(<ReportPage />);
+
+    await screen.findByRole('heading', { name: '一句话判断' });
+
+    expect(screen.queryByText('先别碰')).not.toBeInTheDocument();
+    expect(screen.getByText('现在优先押')).toBeInTheDocument();
+    expect(screen.getByText('可以留着')).toBeInTheDocument();
   });
 });

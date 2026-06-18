@@ -51,7 +51,7 @@ describe('buildReport', () => {
     expect(report.expertVerdict.whyThisOrder).toContain(
       report.directionRanking.primary.title.replace(/类$/u, '')
     );
-    expect(report.actions).toHaveLength(2);
+    expect(report.actions.length).toBeGreaterThanOrEqual(2);
     expect(report.marketInsights.primary.directionId).toBe(report.directionRanking.primary.id);
     expect(report.marketInsights.primary.aiSignal.length).toBeGreaterThan(0);
     expect(report.marketInsights.primary.sources.length).toBeGreaterThan(0);
@@ -100,5 +100,25 @@ describe('buildReport', () => {
     expect(report.directionRanking.avoidFirst).not.toBeNull();
     expect(report.directionRanking.avoidFirst?.id).not.toBe(report.directionRanking.primary.id);
     expect(report.expertVerdict.headline).toContain('稳');
+  });
+
+  it('adds advisor-style card copy for each ranked direction', () => {
+    const report = buildReport(baseValidPayload);
+
+    expect(report.directionRanking.primary.advisorCard.decisionLine.length).toBeGreaterThan(0);
+    expect(report.directionRanking.primary.advisorCard.attractionLine.length).toBeGreaterThan(0);
+    expect(report.directionRanking.primary.advisorCard.regretLine.length).toBeGreaterThan(0);
+    expect(report.directionRanking.primary.advisorCard.mismatchLine.length).toBeGreaterThan(0);
+
+    expect(report.directionRanking.secondary?.advisorCard.decisionLine.length).toBeGreaterThan(0);
+    expect(report.directionRanking.avoidFirst?.advisorCard.decisionLine.length).toBeGreaterThan(0);
+  });
+
+  it('uses clearly different tones for push, keep, and avoid cards', () => {
+    const report = buildReport(baseValidPayload);
+
+    expect(report.directionRanking.primary.advisorCard.decisionLine).toMatch(/先把.*认真看透|别急着摊/u);
+    expect(report.directionRanking.secondary?.advisorCard.decisionLine).toMatch(/先留在|别太早当成答案/u);
+    expect(report.directionRanking.avoidFirst?.advisorCard.decisionLine).toMatch(/先别|对你不划算/u);
   });
 });

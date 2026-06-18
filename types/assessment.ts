@@ -43,3 +43,22 @@ export interface DirectionGroup {
   suitableFor: string[];
   cautionFor: string[];
 }
+
+export const advisorMismatchTypes = [
+  'hotness-misread',
+  'long-training-mismatch',
+  'stability-illusion',
+  'interest-imagination-gap',
+  'cost-tolerance-mismatch',
+  'path-ambiguity-anxiety'
+] as const;
+
+export type AdvisorMismatchType = (typeof advisorMismatchTypes)[number];
+
+export interface AdvisorDirectionCard {
+  decisionLine: string;
+  attractionLine: string;
+  regretLine: string;
+  mismatchLine: string;
+  mismatchType: AdvisorMismatchType;
+}

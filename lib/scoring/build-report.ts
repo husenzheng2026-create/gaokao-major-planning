@@ -14,12 +14,20 @@ import {
 import { reportArchetypeCopyMap } from '@/data/report-archetypes';
 import { questionnaireSchema } from '@/lib/validation/questionnaire-schema';
 import {
+  buildAdvisorCard,
+  detectDirectionRelation,
+  detectMismatchType,
+  type DirectionCardRole,
+  type DirectionRelation
+} from '@/lib/scoring/advisor-copy';
+import {
   archetypePriorityOrder,
   archetypeSignalWeightMap,
   enumToScore,
   factorWeightMap
 } from '@/lib/scoring/scoring-rules';
 import type {
+  AdvisorDirectionCard,
   DirectionGroup,
   DirectionGroupId,
   MajorChoiceArchetype
@@ -38,6 +46,7 @@ export interface RecommendedDirection {
   tradeOffs: string[];
   fitSummary: string;
   cautionSummary: string;
+  advisorCard: AdvisorDirectionCard;
 }
 
 export interface ActionItem {
@@ -61,6 +70,7 @@ export interface MarketInsightSnapshot {
   industryMomentum: string;
   admissionSignal: string;
   caution: string;
+  decisionNote: string;
   sources: MarketSource[];
 }
 
@@ -108,7 +118,6 @@ const pathStabilityText = {
 } as const;
 
 type WeightField = keyof (typeof factorWeightMap)[FactorName];
-type ScoredDirection = RecommendedDirection;
 type ChoiceWeights<T extends string> = Partial<Record<T, number>>;
 
 function scoreField(group: DirectionGroup, field: WeightField, weight: number): number {
@@ -288,21 +297,76 @@ function buildDiagnosis(
 function buildWhyThisOrder(input: QuestionnaireInput, ranking: DirectionRanking): string {
   const primaryTitle = stripDirectionSuffix(ranking.primary.title);
   const secondaryTitle = ranking.secondary ? stripDirectionSuffix(ranking.secondary.title) : '第二方向';
-  const avoidTitle = ranking.avoidFirst ? stripDirectionSuffix(ranking.avoidFirst.title) : '最后那个方向';
+  const avoidTitle = ranking.avoidFirst ? stripDirectionSuffix(ranking.avoidFirst.title) : null;
   const risk = input.rejectedRisks[0] ?? '你最抗拒的代价';
 
-  return `如果我是你，我会先把 ${primaryTitle} 放前面，再留着 ${secondaryTitle} 做对照。不是因为 ${primaryTitle} 听起来最厉害，而是它更贴着你现在真正在意的东西。至于 ${avoidTitle}，问题不是绝对不能选，而是你一旦把它排太前，后面大概率要为「${risk}」这件事反复付代价。`;
+  if (avoidTitle) {
+    return `如果我是你，我会先把 ${primaryTitle} 放前面，再留着 ${secondaryTitle} 做对照。不是因为 ${primaryTitle} 听起来最厉害，而是它更贴着你现在真正在意的东西。至于 ${avoidTitle}，问题不是绝对不能选，而是你一旦把它排太前，后面大概率要为「${risk}」这件事反复付代价。`;
+  }
+
+  return `如果我是你，我会先把 ${primaryTitle} 放前面，再留着 ${secondaryTitle} 做对照。不是因为 ${primaryTitle} 听起来最厉害，而是它更贴着你现在真正在意的东西。你现在选的这两个方向之间已经有了足够的对比度——接下来不是继续摊新方向，而是把这两个真正吃透。`;
 }
 
 function buildRegretWarning(input: QuestionnaireInput, ranking: DirectionRanking): string {
-  const avoidTitle = ranking.avoidFirst ? stripDirectionSuffix(ranking.avoidFirst.title) : '那个不该硬顶的方向';
-  const parentPriority = input.parentTopFactors[0] ?? '现实确定性';
   const nonNegotiable = input.nonNegotiableFactor;
+  const parentPriority = input.parentTopFactors[0] ?? '现实确定性';
 
-  return `你之后最容易后悔的，不是没选最热的，而是明明自己更在意「${nonNegotiable}」，最后却因为「${parentPriority}」或者外部评价，把 ${avoidTitle} 硬往前排。那种后悔通常不是填报当天发生的，而是读到一半才开始。`;
+  if (ranking.avoidFirst) {
+    const avoidTitle = stripDirectionSuffix(ranking.avoidFirst.title);
+    return `你之后最容易后悔的，不是没选最热的，而是明明自己更在意「${nonNegotiable}」，最后却因为「${parentPriority}」或者外部评价，把 ${avoidTitle} 硬往前排。那种后悔通常不是填报当天发生的，而是读到一半才开始。`;
+  }
+
+  return `你之后最容易后悔的，不是没选最热的，而是明明自己更在意「${nonNegotiable}」，最后却因为「${parentPriority}」或者外部评价，做了一个违心的选择。那种后悔通常不是填报当天发生的，而是读到一半才开始。把现在排第一的方向认真看透，比再多看三个新方向都更有用。`;
 }
 
-function buildMarketSnapshot(direction: RecommendedDirection): MarketInsightSnapshot {
+// ---- P1: 把市场现实翻译成决策语言 ----
+// 不是堆数据，而是告诉考生"这个数据对你意味着什么"
+
+function buildDecisionNote(
+  group: DirectionGroup,
+  input: QuestionnaireInput
+): string {
+  const notes: string[] = [];
+
+  // 城市集中度 → 考生是否需要优先去一线
+  if (group.cityConcentration === '高') {
+    notes.push('这个方向的优质岗位高度集中在一线和强二线城市。如果你毕业后不想优先去这些城市，它就不适合排第一。');
+  }
+
+  // 深造依赖 → 考生是否愿意读研
+  if (group.advancedDegreeDependency === '高' && input.trainingCycleAcceptance === '不太接受') {
+    notes.push('它对读研有硬性要求。如果你现在就不想读研，这条路后面会越来越拧巴——这不是能力问题，是路径本身就不匹配你的规划。');
+  } else if (group.advancedDegreeDependency === '高') {
+    notes.push('读研对这条路不是"可选项"，是拿到核心岗位的硬门票。如果你能接受继续深造，它的回报是值得的；如果不能，需要把预期调低。');
+  }
+
+  // 学习压力 → 考生是否抗拒
+  if (group.studyPressure === '高' && input.rejectedRisks.includes('课程难度高、学习压力大')) {
+    notes.push('它的课程压力和训练强度明显高于多数方向——而你已经表达过对高压学习的抗拒。这不是"再努力一点就能克服"的问题，是每天的节奏是否真的适合你。');
+  }
+
+  // 行业波动 → 考生是否担心
+  if (group.industryVolatility === '高' && input.rejectedRisks.includes('行业波动大')) {
+    notes.push('这个方向行业变化快、不确定性高，和你对稳定性的要求是正面冲突的。如果选它，你要做好"每隔几年就要重新判断方向"的心理准备。');
+  }
+
+  // 路径清晰度 → 考生是否需要确定性
+  if (group.pathClarity === '分化明显' && input.futurePath === '希望路径稳定清晰') {
+    notes.push('它的出路天然分化大，不像师范或医学那样有明确的职业轨道。如果你需要一开始就知道5年后在哪，这种方向会让你在中间阶段反复犹豫。');
+  }
+
+  if (notes.length === 0) {
+    return '从目前的信息看，这个方向的核心条件和你的偏好之间没有明显的硬冲突。但建议你重点核实上面的"先别误判"提醒。';
+  }
+
+  return notes.join(' ');
+}
+
+function buildMarketSnapshot(
+  direction: RecommendedDirection,
+  group: DirectionGroup,
+  input: QuestionnaireInput
+): MarketInsightSnapshot {
   const insight = directionMarketInsights[direction.id];
 
   return {
@@ -316,6 +380,7 @@ function buildMarketSnapshot(direction: RecommendedDirection): MarketInsightSnap
     industryMomentum: insight.industryMomentum,
     admissionSignal: insight.admissionSignal,
     caution: insight.caution,
+    decisionNote: buildDecisionNote(group, input),
     sources: insight.sources
   };
 }
@@ -581,7 +646,7 @@ function buildArchetype(input: QuestionnaireInput): MajorChoiceArchetype {
   return scores[0].archetype;
 }
 
-function buildDirectionRanking(allRanked: ScoredDirection[]): DirectionRanking {
+function buildDirectionRanking(allRanked: RecommendedDirection[]): DirectionRanking {
   return {
     primary: allRanked[0],
     secondary: allRanked[1] ?? null,
@@ -589,29 +654,155 @@ function buildDirectionRanking(allRanked: ScoredDirection[]): DirectionRanking {
   };
 }
 
+function directionRole(index: number, total: number): DirectionCardRole {
+  if (index === 0) return 'push';
+  if (index === 1) return 'keep';
+  if (index === total - 1) return 'avoid';
+  return 'keep';
+}
+
+// ---- P0-1: Archetype 与方向评分咬合 ----
+// 人格判断定下来之后，用它来约束方向排序，避免"说你稳却推你冲"的信任裂缝。
+
+function archetypeAdjustment(
+  group: DirectionGroup,
+  archetype: MajorChoiceArchetype,
+  input: QuestionnaireInput
+): number {
+  switch (archetype) {
+    case '现实安全型':
+      // 最怕波动、高压、不确定——对稳的方向加分，对飘的方向狠狠扣分
+      let safetyScore = 0;
+      if (group.industryVolatility === '高') safetyScore -= 8;
+      if (group.studyPressure === '高') safetyScore -= 4;
+      if (group.cityConcentration === '高') safetyScore -= 3;
+      if (group.pathClarity === '清晰') safetyScore += 4;
+      if (group.industryVolatility === '低') safetyScore += 5;
+      if (group.jobBreadth === '窄') safetyScore -= 2;
+      return safetyScore;
+
+    case '成长优先型':
+      // 在意上限，但前提是能扛住压力和波动
+      let growthScore = 0;
+      if (group.growthPotential === '高') growthScore += 4;
+      if (group.industryVolatility === '高' && input.rejectedRisks.includes('行业波动大'))
+        growthScore -= 5;
+      if (group.jobBreadth === '窄') growthScore -= 3;
+      return growthScore;
+
+    case '低后悔成本型':
+      // 最怕选了之后发现代价太大——对长周期、高投入方向扣分
+      let regretScore = 0;
+      if (group.advancedDegreeDependency === '高') regretScore -= 6;
+      if (group.jobBreadth === '窄') regretScore -= 5;
+      if (group.pathClarity === '清晰') regretScore += 3;
+      if (group.industryVolatility === '低') regretScore += 2;
+      if (group.studyPressure === '高') regretScore -= 3;
+      return regretScore;
+
+    case '兴趣摇摆型':
+      // 需要清晰路径和较低的学习压力，避免越读越迷茫
+      let clarityScore = 0;
+      if (group.pathClarity === '分化明显') clarityScore -= 5;
+      if (group.pathClarity === '清晰') clarityScore += 5;
+      if (group.studyPressure === '高') clarityScore -= 3;
+      if (group.jobBreadth === '窄') clarityScore -= 2;
+      return clarityScore;
+
+    case '稳中求进型':
+    default:
+      // 稳和成长都要算，但极端方向不适合
+      let balanceScore = 0;
+      if (group.industryVolatility === '高') balanceScore -= 4;
+      if (group.advancedDegreeDependency === '高') balanceScore -= 3;
+      if (group.growthPotential === '高') balanceScore += 2;
+      if (group.pathClarity === '清晰') balanceScore += 2;
+      if (group.jobBreadth === '窄') balanceScore -= 2;
+      return balanceScore;
+  }
+}
+
+// ---- P0-3 深化: 行动建议覆盖报告的真正主矛盾 ----
+// 不再只盯第一推荐方向的错配，而是覆盖：
+// ① 首选方向的代价核实 ② 首选 vs 次选的二选一 ③ 家长分歧化解 ④ 止损方向警告
+
 function buildActionItems(
   input: QuestionnaireInput,
   ranking: DirectionRanking
 ): ActionItem[] {
-  const primaryTitle = ranking.primary.title;
-  const secondaryTitle = ranking.secondary?.title ?? '第二建议方向';
-  const avoidTitle = ranking.avoidFirst?.title ?? '暂不建议优先方向';
-  return [
-    {
-      title: '只保留两个方向',
-      detail: `接下来 48 小时里，只看 ${primaryTitle} 和 ${secondaryTitle}，先别继续摊更多新方向。${avoidTitle} 现在先放后面，不要再给它额外注意力。`
+  const primaryName = ranking.primary.title.replace(/类$/u, '');
+  const secondaryName = ranking.secondary?.title.replace(/类$/u, '') ?? '第二建议方向';
+  const avoidName = ranking.avoidFirst?.title.replace(/类$/u, '') ?? null;
+  const mismatchType = ranking.primary.advisorCard.mismatchType;
+  const actions: ActionItem[] = [];
+
+  // ① 首选方向的代价核实（按错配类型）
+  const mismatchChecks: Record<string, ActionItem> = {
+    'long-training-mismatch': {
+      title: `今晚核实：${primaryName}到底要读几年`,
+      detail: `去阳光高考网或目标院校官网，查${primaryName}的真实学制路径——本科几年、要不要读研、读研又是几年。别自己猜。算清楚总年数之后问自己：我真的愿意为它花这么多年吗？`
     },
-    {
-      title: '只砍一个分歧点',
-      detail: `别一晚上把所有专业都摊开讲。只围绕你最在意的「${input.nonNegotiableFactor}」和家长最在意的「${input.parentTopFactors[0]}」谈一次，再顺手核实一个问题：${primaryTitle} 和 ${secondaryTitle} 到底哪个更容易让你以后少后悔。`
+    'hotness-misread': {
+      title: `把${primaryName}的"热度"和"适合度"拆开看`,
+      detail: `找2个在读${primaryName}的学长或真实分享（B站、知乎、目标院校贴吧），只看一件事：他们日常最痛苦的是什么。如果那个痛苦正好是你最不想扛的，热度再高也和你没关系。`
+    },
+    'stability-illusion': {
+      title: `拆开${primaryName}的"稳"——到底是哪种稳`,
+      detail: `"稳"分两种：一种是"进去就稳了"，一种是"你得先过好几关才稳"。去查${primaryName}的真实淘汰率、资格证要求和转行率，别用名头代替数据。`
+    },
+    'interest-imagination-gap': {
+      title: `找${primaryName}在读学生的一天`,
+      detail: `去B站或知乎找2个${primaryName}在读学生的vlog或日常分享，只看他们普通的一天是怎么过的。别只看高光时刻。如果日常让你觉得"和想的不太一样"，这个信号要认真对待。`
+    },
+    'cost-tolerance-mismatch': {
+      title: `把${primaryName}的代价写下来，然后诚实画圈`,
+      detail: `拿张纸，左边写${primaryName}最吸引你的3个点，右边写它最需要你付出的3个代价。然后诚实圈出：右边有没有你"打死也不想长期承受"的东西。如果有，这就是红灯。`
+    },
+    'path-ambiguity-anxiety': {
+      title: `画出${primaryName}的3条真实出路`,
+      detail: `去查${primaryName}最近两三届毕业生的真实去向（学校就业报告、招聘平台），不是"能做什么"，而是"实际去了哪里"。如果去向太分散、和你预期差距大，这条路天然需要你自己做更多判断。`
     }
-  ];
+  };
+  const check = mismatchChecks[mismatchType] ?? mismatchChecks['path-ambiguity-anxiety'];
+  actions.push(check);
+
+  // ② 首选 vs 次选：二选一的真正刀子
+  if (ranking.secondary) {
+    actions.push({
+      title: `${primaryName} vs ${secondaryName}：今晚只砍一刀`,
+      detail: `别比"哪个更好"，比"哪个的代价你更愿意长期付"。拿出一张纸，两列并排：左边写${primaryName}的核心代价，右边写${secondaryName}的核心代价。然后画掉你打死不想承受的那一边——剩下的就是今晚的结论。`
+    });
+  }
+
+  // ③ 家长分歧化解（当自己最在意的事 ≠ 家长最在意的事时）
+  const selfPriority = input.nonNegotiableFactor;
+  const parentPriority = input.parentTopFactors[0];
+  if (selfPriority !== parentPriority) {
+    actions.push({
+      title: `跟家长谈一次，但只谈一个分歧点`,
+      detail: `你最在意「${selfPriority}」，家长最在意「${parentPriority}」。今晚只围绕这一个分歧谈：把你为什么更看重「${selfPriority}」的理由说清楚，也认真听家长为什么坚持「${parentPriority}」——不要求达成一致，只要求双方都听懂了对方的逻辑。`
+    });
+  }
+
+  // ④ 止损方向警告（当存在需要强力劝退的方向时）
+  if (avoidName) {
+    actions.push({
+      title: `给${avoidName}一个明确的"先不碰"标签`,
+      detail: `不是永远否定它，而是明确告诉自己和家长：在把${primaryName}和${secondaryName}吃透之前，${avoidName}不再占用今晚和明天的比较时间。把它从"待比较清单"里先划掉，48小时后再决定要不要重新看。`
+    });
+  }
+
+  return actions;
 }
 
 export function buildReport(input: QuestionnaireInput): Report {
   const selectedIds = new Set(input.selectedDirections);
 
-  const allRankedDirections = directionGroups
+  // ---- P0-1: Archetype 先算，再用于方向评分 ----
+  const archetype = buildArchetype(input);
+
+  // Step 1: 评分 → 排序（不涉及排序位置的字段在此计算）
+  const scoredDirections = directionGroups
     .filter((group) => selectedIds.has(group.id))
     .map((group) => {
       const score =
@@ -621,11 +812,11 @@ export function buildReport(input: QuestionnaireInput): Report {
         futurePathBonus(group, input) +
         input.rejectedRisks.reduce((total, risk) => total + riskPenalty(group, risk), 0) +
         input.parentRejectedRisks.reduce((total, risk) => total + riskPenalty(group, risk) / 2, 0) +
-        trainingPenalty(group, input);
+        trainingPenalty(group, input) +
+        archetypeAdjustment(group, archetype, input);
 
       return {
-        id: group.id,
-        title: group.title,
+        group,
         score,
         reasons: buildReasons(group, input),
         tradeOffs: buildTradeOffs(group),
@@ -635,12 +826,38 @@ export function buildReport(input: QuestionnaireInput): Report {
     })
     .sort((a, b) => b.score - a.score);
 
-  const directionRanking = buildDirectionRanking(allRankedDirections);
-  const archetype = buildArchetype(input);
-  const recommendedDirections = allRankedDirections.slice(0, Math.min(TOP_N, input.selectedDirections.length));
-  const primaryMarketInsight = buildMarketSnapshot(directionRanking.primary);
-  const secondaryMarketInsight = directionRanking.secondary
-    ? buildMarketSnapshot(directionRanking.secondary)
+  // Step 2: 排序后再确定角色与顾问文案（push/keep/avoid 依赖排序位置）
+  const rankedWithAdvisorRoles: RecommendedDirection[] = scoredDirections.map(
+    ({ group, score, reasons, tradeOffs, fitSummary, cautionSummary }, index, source) => {
+      const role = directionRole(index, source.length);
+      const mismatchType = detectMismatchType(input, group);
+      const relation = detectDirectionRelation(input, group.id);
+
+      return {
+        id: group.id,
+        title: group.title,
+        score,
+        reasons,
+        tradeOffs,
+        fitSummary,
+        cautionSummary,
+        advisorCard: buildAdvisorCard(role, mismatchType, input, group, relation)
+      };
+    }
+  );
+
+  const directionRanking = buildDirectionRanking(rankedWithAdvisorRoles);
+  const recommendedDirections = rankedWithAdvisorRoles.slice(0, Math.min(TOP_N, input.selectedDirections.length));
+
+  const primaryGroup = directionGroups.find((g) => g.id === directionRanking.primary.id)!;
+  const secondaryDir = directionRanking.secondary;
+  const secondaryGroup = secondaryDir
+    ? directionGroups.find((g) => g.id === secondaryDir.id)!
+    : null;
+
+  const primaryMarketInsight = buildMarketSnapshot(directionRanking.primary, primaryGroup, input);
+  const secondaryMarketInsight = directionRanking.secondary && secondaryGroup
+    ? buildMarketSnapshot(directionRanking.secondary, secondaryGroup, input)
     : null;
 
   return {

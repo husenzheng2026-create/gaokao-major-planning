@@ -12,6 +12,7 @@ import { MarketRealityCard } from '@/components/report/market-reality-card';
 import { RecommendedDirectionCard } from '@/components/report/recommended-direction-card';
 import { SummaryPanel } from '@/components/report/summary-panel';
 import { directionGroups } from '@/data/direction-groups';
+import type { DirectionGroup } from '@/types/assessment';
 import {
   buildReport,
   type RecommendedDirection,
@@ -54,34 +55,25 @@ function riskLabel(report: Report): string {
   return values[0] ?? compactSentence(report.summary.riskBoundary);
 }
 
+function actionSectionTitle(count: number): string {
+  const n = Math.min(count, 3);
+  const num = n === 1 ? '一' : n === 2 ? '两' : '几';
+  return `接下来 48 小时，只做这${num}刀`;
+}
+
 function holdRecommendation(report: Report): RecommendedDirection | undefined {
+  // avoidFirst 来自用户已选方向中得分最低的那个（≥3 个方向时有效）
   if (report.directionRanking.avoidFirst) {
     return report.directionRanking.avoidFirst;
   }
 
+  // recommendedDirections 在用户选了 ≥3 个方向时会有第 3 个
   if (report.recommendedDirections[2]) {
     return report.recommendedDirections[2];
   }
 
-  const recommendedIds = new Set(report.recommendedDirections.slice(0, 2).map((item) => item.id));
-  const fallbackGroup = directionGroups.find((group) => !recommendedIds.has(group.id));
-
-  if (!fallbackGroup) {
-    return undefined;
-  }
-
-  return {
-    id: fallbackGroup.id,
-    title: fallbackGroup.title,
-    score: 0,
-    reasons: fallbackGroup.riskNotes.slice(0, 2),
-    tradeOffs: fallbackGroup.riskNotes.slice(0, 2),
-    fitSummary: fallbackGroup.suitableFor[0] ?? '当前信息下不建议优先投入太多比较成本。',
-    cautionSummary:
-      fallbackGroup.cautionFor[0] ??
-      fallbackGroup.riskNotes[0] ??
-      '需要先核实代价，再决定是否继续往前排。'
-  };
+  // 用户只选了 1-2 个方向：不存在"该止损的已选方向"，不凭空造一个
+  return undefined;
 }
 
 function buildSourceNote(report: Report, tier: 'primary' | 'secondary'): string {
@@ -187,9 +179,7 @@ export default function ReportPage() {
             <RecommendedDirectionCard
               badge="现在优先押"
               title={primary.title}
-              summary={`这不是最安全的说法，但我会建议你先把它排第一。${compactSentence(primary.fitSummary)}。`}
-              reasons={primary.reasons}
-              caution={`我真正担心的是：${compactSentence(primary.cautionSummary)}。`}
+              advisorCard={primary.advisorCard}
               tone="primary"
             />
           ) : null}
@@ -198,9 +188,7 @@ export default function ReportPage() {
             <RecommendedDirectionCard
               badge="可以留着"
               title={secondary.title}
-              summary={`可以保留，但先别让它抢走第一顺位。${compactSentence(secondary.fitSummary)}。`}
-              reasons={secondary.reasons}
-              caution={`你再往下比时，重点看这件事：${compactSentence(secondary.cautionSummary)}。`}
+              advisorCard={secondary.advisorCard}
               tone="secondary"
             />
           ) : null}
@@ -209,9 +197,13 @@ export default function ReportPage() {
             <RecommendedDirectionCard
               badge="先别碰"
               title={hold.title}
-              summary={`不是永远不能选，但你现在真没必要先扑上去。${compactSentence(hold.fitSummary)}。`}
-              reasons={hold.tradeOffs.length > 0 ? hold.tradeOffs : hold.reasons}
-              caution={`我建议先放一放，主要是因为：${compactSentence(hold.cautionSummary)}。`}
+              advisorCard={hold.advisorCard ?? {
+                decisionLine: '这个方向先别急着往前排。',
+                attractionLine: '它可能会因为表面优势吸引你，但现在还不值得先扑上去。',
+                regretLine: '你以后最容易后悔的，是还没搞清代价就先投入太多注意力。',
+                mismatchLine: '先放一放，不是彻底否定，而是避免你过早做出高成本判断。',
+                mismatchType: 'path-ambiguity-anxiety' as const
+              }}
               tone="hold"
             />
           ) : null}
@@ -230,6 +222,7 @@ export default function ReportPage() {
           <MarketRealityCard
             title={`${report.marketInsights.primary.title} · 首选现实画像`}
             summary={report.marketInsights.primary.summary}
+            decisionNote={report.marketInsights.primary.decisionNote}
             employmentScope={report.marketInsights.primary.employmentScope}
             advancedStudyLoad={report.marketInsights.primary.advancedStudyLoad}
             cityConcentration={report.marketInsights.primary.cityConcentration}
@@ -244,6 +237,7 @@ export default function ReportPage() {
             <MarketRealityCard
               title={`${report.marketInsights.secondary.title} · 次选现实画像`}
               summary={report.marketInsights.secondary.summary}
+              decisionNote={report.marketInsights.secondary.decisionNote}
               employmentScope={report.marketInsights.secondary.employmentScope}
               advancedStudyLoad={report.marketInsights.secondary.advancedStudyLoad}
               cityConcentration={report.marketInsights.secondary.cityConcentration}
@@ -266,7 +260,7 @@ export default function ReportPage() {
         <p className="text-xs leading-6 text-slate-500">{report.marketInsights.methodologyNote}</p>
       </section>
 
-      <ActionPlanList title="接下来 48 小时，只做这两刀" items={report.actions} />
+      <ActionPlanList title={actionSectionTitle(report.actions.length)} items={report.actions} />
     </main>
   );
 }

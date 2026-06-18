@@ -8,6 +8,7 @@ interface MarketRealityCardProps {
   industryMomentum: string;
   admissionSignal: string;
   caution: string;
+  decisionNote: string;
   sourceNote: string;
 }
 
@@ -16,6 +17,13 @@ export function MarketRealityCard(props: MarketRealityCardProps) {
     <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
       <h3 className="text-xl font-semibold text-slate-900">{props.title}</h3>
       <p className="mt-3 text-sm leading-7 text-slate-600">{props.summary}</p>
+
+      {/* P1: 决策翻译 —— 把数据变成"对你意味着什么" */}
+      <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">对你意味着什么</p>
+        <p className="mt-2 text-sm leading-7 text-sky-900">{props.decisionNote}</p>
+      </div>
+
       <dl className="mt-4 space-y-3 text-sm text-slate-600">
         <div>
           <dt className="font-medium text-slate-900">就业面宽度</dt>
