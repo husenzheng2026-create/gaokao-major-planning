@@ -13,7 +13,7 @@ type PageState =
   | { kind: 'empty' }
   | { kind: 'ready'; report: Report };
 
-const disclaimer =
+const DISCLAIMER =
   '本工具用于专业方向决策辅助，不承诺录取结果、就业结果、薪资结果。最终填报请结合官方招生信息、分数位次与家庭实际情况。';
 
 export default function ReportPage() {
@@ -31,20 +31,20 @@ export default function ReportPage() {
 
   if (state.kind === 'loading') {
     return (
-      <View className="page-shell report-page">
-        <View className="card report-card report-card--center">
-          <Text className="report-copy">正在整理你的诊断结果…</Text>
-        </View>
+      <View className="page-shell report-page report-page--center">
+        <Text className="report-loading">正在整理你的诊断结果…</Text>
       </View>
     );
   }
 
   if (state.kind === 'empty') {
     return (
-      <View className="page-shell report-page">
-        <View className="card report-card">
-          <Text className="report-title">未找到有效结果</Text>
-          <Text className="report-copy">请先完成问卷，再回来看报告。</Text>
+      <View className="page-shell report-page report-page--center">
+        <View className="card report-empty">
+          <Text className="report-section-title">未找到有效结果</Text>
+          <Text className="report-copy">
+            当前还没有可用的问卷结果，或结果已失效。请先完成诊断。
+          </Text>
           <Button
             className="button-primary"
             onClick={() => Taro.navigateTo({ url: '/pages/questionnaire/index' })}
@@ -57,104 +57,203 @@ export default function ReportPage() {
   }
 
   const { report } = state;
-  const cards = [
-    {
-      badge: '现在优先押',
-      item: report.directionRanking.primary,
-      cautionLabel: '我真正担心的是'
-    },
-    report.directionRanking.secondary
-      ? {
-          badge: '可以留着',
-          item: report.directionRanking.secondary,
-          cautionLabel: '你往下比时重点看'
-        }
-      : null,
-    report.directionRanking.avoidFirst
-      ? {
-          badge: '先别碰',
-          item: report.directionRanking.avoidFirst,
-          cautionLabel: '我建议先放一放'
-        }
-      : null
-  ].filter(Boolean) as Array<{
-    badge: string;
-    item: NonNullable<Report['directionRanking']['primary']>;
-    cautionLabel: string;
-  }>;
+  const primary = report.directionRanking.primary;
+  const secondary = report.directionRanking.secondary;
+  const avoidFirst = report.directionRanking.avoidFirst;
 
   return (
     <ScrollView scrollY className="report-scroll">
       <View className="page-shell report-page">
+        {/* ① Hero: 类型标签 + 一句话判断 */}
         <View className="report-hero">
-          <Text className="page-tag">你的判断类型</Text>
-          <Text className="report-archetype">{report.archetype}</Text>
+          <Text className="page-tag">{report.archetype}</Text>
           <Text className="report-headline">{report.expertVerdict.headline}</Text>
-          <Text className="report-copy">{report.archetypeSummary}</Text>
+          <Text className="report-subheadline">{report.archetypeSummary}</Text>
         </View>
 
-        <View className="card report-card report-card--focus">
-          <Text className="report-section-title">为什么会这样</Text>
-          <Text className="report-copy">{report.expertVerdict.diagnosis}</Text>
-          <Text className="report-copy report-copy--muted">{report.expertVerdict.whyThisOrder}</Text>
+        {/* ② 为什么会这样 + 最容易后悔的点 */}
+        <View className="report-grid-2col">
+          <View className="card report-card--focus">
+            <Text className="report-section-title">为什么会这样劝你</Text>
+            <Text className="report-copy">{report.expertVerdict.whyThisOrder}</Text>
+          </View>
+
+          <View className="card report-card--warn">
+            <Text className="report-section-title">你最容易后悔的点</Text>
+            <Text className="report-copy">{report.expertVerdict.regretWarning}</Text>
+          </View>
         </View>
 
-        <View className="card report-card">
-          <Text className="report-section-title">你现在最该先看哪边</Text>
-          <Text className="report-copy">{report.summary.decisionStyle}</Text>
-          <Text className="report-copy report-copy--muted">{report.summary.coreConflict}</Text>
+        {/* ③ 方向优先级卡片 */}
+        <View className="report-section">
+          <Text className="report-section-label">方向优先级</Text>
         </View>
 
-        <View className="card report-card report-card--warn">
-          <Text className="report-section-title">你最容易后悔的点</Text>
-          <Text className="report-copy">{report.expertVerdict.regretWarning}</Text>
-        </View>
-
-        {cards.map(({ badge, item, cautionLabel }) => (
-          <View key={badge} className="card report-card">
-            <Text className="report-badge">{badge}</Text>
-            <Text className="report-card-title">{item.title}</Text>
-            <Text className="report-copy">{item.fitSummary}</Text>
-            {item.reasons.slice(0, 2).map((reason) => (
-              <Text key={reason} className="report-bullet">
-                - {reason}
-              </Text>
-            ))}
-            <Text className="report-caution">
-              {cautionLabel}：{item.cautionSummary}
+        {/* Push 卡: 现在优先押 */}
+        <View className="card report-direction-card report-direction-card--push">
+          <Text className="direction-badge direction-badge--push">现在优先押</Text>
+          <Text className="direction-title">{primary.title}</Text>
+          <Text className="direction-decision">{primary.advisorCard.decisionLine}</Text>
+          <Text className="direction-detail">{primary.advisorCard.attractionLine}</Text>
+          <Text className="direction-detail">{primary.advisorCard.regretLine}</Text>
+          <View className="direction-mismatch">
+            <Text className="direction-mismatch__text">
+              {primary.advisorCard.mismatchLine}
             </Text>
           </View>
-        ))}
-
-        <View className="card report-card">
-          <Text className="report-section-title">接下来 48 小时，只做这两刀</Text>
-          {report.actions.map((action, index) => (
-            <View key={action.title} className="report-action">
-              <Text className="report-action-index">{index + 1}</Text>
-              <View className="report-action-body">
-                <Text className="report-action-title">{action.title}</Text>
-                <Text className="report-copy">{action.detail}</Text>
-              </View>
-            </View>
-          ))}
         </View>
 
-        <View className="card report-card">
-          <Text className="report-section-title">客观现实层</Text>
+        {/* Keep 卡: 可以留着 */}
+        {secondary ? (
+          <View className="card report-direction-card report-direction-card--keep">
+            <Text className="direction-badge direction-badge--keep">可以留着</Text>
+            <Text className="direction-title">{secondary.title}</Text>
+            <Text className="direction-decision">{secondary.advisorCard.decisionLine}</Text>
+            <Text className="direction-detail">{secondary.advisorCard.attractionLine}</Text>
+            <Text className="direction-detail">{secondary.advisorCard.regretLine}</Text>
+            <View className="direction-mismatch">
+              <Text className="direction-mismatch__text">
+                {secondary.advisorCard.mismatchLine}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Avoid 卡: 先别碰 */}
+        {avoidFirst ? (
+          <View className="card report-direction-card report-direction-card--avoid">
+            <Text className="direction-badge direction-badge--avoid">先别碰</Text>
+            <Text className="direction-title">{avoidFirst.title}</Text>
+            <Text className="direction-decision">{avoidFirst.advisorCard.decisionLine}</Text>
+            <Text className="direction-detail">{avoidFirst.advisorCard.attractionLine}</Text>
+            <Text className="direction-detail">{avoidFirst.advisorCard.regretLine}</Text>
+            <View className="direction-mismatch">
+              <Text className="direction-mismatch__text">
+                {avoidFirst.advisorCard.mismatchLine}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* ④ 客观现实层 */}
+        <View className="report-section">
+          <Text className="report-section-label">客观现实层</Text>
+          <Text className="report-section-desc">
+            近年公开信息里更稳定的现实信号，帮你判断值不值得继续往前排。
+          </Text>
+        </View>
+
+        <View className="card report-reality-card">
+          <Text className="reality-title">
+            {report.marketInsights.primary.title} · 首选现实画像
+          </Text>
           <Text className="report-copy">{report.marketInsights.primary.summary}</Text>
-          {report.marketInsights.comparisonRows.map((row) => (
-            <View key={row.label} className="report-row">
-              <Text className="report-row-label">{row.label}</Text>
-              {row.values.map((value, index) => (
-                <Text key={`${row.label}-${index}`} className="report-copy">
-                  {index === 0 ? '首选' : '次选'}：{value}
-                </Text>
+
+          {/* Decision Note: 最重要的——这对你意味着什么 */}
+          <View className="reality-note">
+            <Text className="reality-note__label">这对你意味着什么</Text>
+            <Text className="reality-note__text">
+              {report.marketInsights.primary.decisionNote}
+            </Text>
+          </View>
+
+          {/* Data points */}
+          <View className="reality-points">
+            {[
+              { label: '就业面', value: report.marketInsights.primary.employmentScope },
+              { label: '深造依赖', value: report.marketInsights.primary.advancedStudyLoad },
+              { label: '城市集中', value: report.marketInsights.primary.cityConcentration },
+              { label: 'AI影响', value: report.marketInsights.primary.aiSignal },
+              { label: '产业景气', value: report.marketInsights.primary.industryMomentum },
+              { label: '录取信号', value: report.marketInsights.primary.admissionSignal }
+            ].map(({ label, value }) => (
+              <View key={label} className="reality-point">
+                <Text className="reality-point__label">{label}</Text>
+                <Text className="reality-point__value">{value}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text className="reality-caution">
+            ⚠️ {report.marketInsights.primary.caution}
+          </Text>
+        </View>
+
+        {report.marketInsights.secondary ? (
+          <View className="card report-reality-card">
+            <Text className="reality-title">
+              {report.marketInsights.secondary.title} · 次选现实画像
+            </Text>
+            <Text className="report-copy">{report.marketInsights.secondary.summary}</Text>
+
+            <View className="reality-note">
+              <Text className="reality-note__label">这对你意味着什么</Text>
+              <Text className="reality-note__text">
+                {report.marketInsights.secondary.decisionNote}
+              </Text>
+            </View>
+
+            <View className="reality-points">
+              {[
+                { label: '就业面', value: report.marketInsights.secondary.employmentScope },
+                { label: '深造依赖', value: report.marketInsights.secondary.advancedStudyLoad },
+                { label: '城市集中', value: report.marketInsights.secondary.cityConcentration },
+                { label: 'AI影响', value: report.marketInsights.secondary.aiSignal },
+                { label: '产业景气', value: report.marketInsights.secondary.industryMomentum },
+                { label: '录取信号', value: report.marketInsights.secondary.admissionSignal }
+              ].map(({ label, value }) => (
+                <View key={label} className="reality-point">
+                  <Text className="reality-point__label">{label}</Text>
+                  <Text className="reality-point__value">{value}</Text>
+                </View>
               ))}
+            </View>
+
+            <Text className="reality-caution">
+              ⚠️ {report.marketInsights.secondary.caution}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* 方向对比简表 */}
+        <View className="card report-compare-card">
+          <Text className="report-section-title">方向对比</Text>
+          {report.marketInsights.comparisonRows.map((row) => (
+            <View key={row.label} className="compare-row">
+              <Text className="compare-row__label">{row.label}</Text>
+              <View className="compare-row__values">
+                <Text className="compare-row__value compare-row__value--primary">
+                  {row.values[0]}
+                </Text>
+                {row.values[1] ? (
+                  <Text className="compare-row__value">{row.values[1]}</Text>
+                ) : null}
+              </View>
             </View>
           ))}
           <Text className="report-source">{report.marketInsights.methodologyNote}</Text>
         </View>
 
+        {/* ⑤ 行动建议 */}
+        <View className="report-section">
+          <Text className="report-section-label">
+            接下来 48 小时，只做这{report.actions.length <= 2 ? '两' : '几'}刀
+          </Text>
+        </View>
+
+        <View className="report-actions">
+          {report.actions.map((action, index) => (
+            <View key={action.title} className="card report-action-card">
+              <View className="action-header">
+                <Text className="action-index">0{index + 1}</Text>
+                <Text className="action-title">{action.title}</Text>
+              </View>
+              <Text className="action-detail">{action.detail}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Footer */}
         <View className="report-footer bottom-safe-area">
           <Button
             className="button-primary"
@@ -162,7 +261,7 @@ export default function ReportPage() {
           >
             重新做一次
           </Button>
-          <Text className="report-source">{disclaimer}</Text>
+          <Text className="report-source">{DISCLAIMER}</Text>
         </View>
       </View>
     </ScrollView>

@@ -1,23 +1,47 @@
+/* ===== Global Reset ===== */
 page {
   background: #f3f6fb;
-  color: #14213d;
+  color: #0f172a;
   font-size: 28px;
+  line-height: 1.6;
 }
 
+/* ===== Layout ===== */
 .page-shell {
   min-height: 100vh;
   padding: 24px 24px 40px;
   box-sizing: border-box;
 }
 
-.card {
-  background: #ffffff;
-  border: 2px solid #e7edf5;
-  border-radius: 24px;
-  padding: 28px 24px;
-  box-shadow: 0 8px 24px rgba(20, 33, 61, 0.05);
+.bottom-safe-area {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
+/* ===== Card ===== */
+.card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 28px 24px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.card-default {
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+
+.card-focus {
+  border-color: #1e293b;
+  background: #ffffff;
+}
+
+.card-warn {
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
+/* ===== Typography ===== */
 .page-tag {
   display: inline-flex;
   align-items: center;
@@ -34,29 +58,37 @@ page {
   font-size: 50px;
   line-height: 1.25;
   font-weight: 700;
-  color: #14213d;
+  color: #0f172a;
 }
 
 .page-subtitle {
   font-size: 28px;
   line-height: 1.7;
-  color: #5c6f91;
+  color: #64748b;
 }
 
+.section-title {
+  font-size: 30px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ===== Buttons ===== */
 .button-primary {
-  background: #14213d;
+  background: #0f172a;
   color: #ffffff;
   border-radius: 20px;
   padding: 24px 0;
   font-size: 28px;
   font-weight: 600;
   text-align: center;
+  border: none;
 }
 
 .button-secondary {
   background: #ffffff;
-  color: #35496e;
-  border: 2px solid #dce5f2;
+  color: #334155;
+  border: 2px solid #e2e8f0;
   border-radius: 20px;
   padding: 24px 0;
   font-size: 28px;
@@ -64,12 +96,21 @@ page {
 }
 
 .button-ghost {
-  padding: 12px 0;
-  font-size: 24px;
-  color: #6c7f9f;
+  padding: 16px 0;
+  font-size: 26px;
+  color: #64748b;
   text-align: center;
+  background: transparent;
+  border: none;
 }
 
-.bottom-safe-area {
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+.button-ghost[disabled] {
+  color: #cbd5e1;
 }
+
+/* ===== Colors ===== */
+/* Primary: #0f172a (slate-900) */
+/* Text: #1e293b (slate-800), #475569 (slate-600), #64748b (slate-500) */
+/* Muted: #94a3b8 (slate-400) */
+/* Warn: #be123c (rose-700), #b45309 (amber-700) */
+/* Success: #0369a1 (sky-700) */

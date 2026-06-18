@@ -40,7 +40,9 @@ function getCurrentValue(
   if (existing === undefined) {
     return type === 'multi-select' ? [] : '';
   }
-  return type === 'multi-select' ? (Array.isArray(existing) ? existing : []) : typeof existing === 'string' ? existing : '';
+  return type === 'multi-select'
+    ? Array.isArray(existing) ? existing : []
+    : typeof existing === 'string' ? existing : '';
 }
 
 function isStepValid(
@@ -114,6 +116,11 @@ export default function QuestionnairePage() {
     setSubmitError('');
   };
 
+  const goPrev = () => {
+    setStepIndex((index) => Math.max(0, index - 1));
+    setSubmitError('');
+  };
+
   const toggleMulti = (option: string) => {
     const list = Array.isArray(currentValue) ? currentValue : [];
     const next = list.includes(option)
@@ -123,7 +130,9 @@ export default function QuestionnairePage() {
   };
 
   const normalizeForSchema = (raw: AnswersState): QuestionnaireInput => {
-    const convertDirectionList = (value: AnswerValue | undefined): QuestionnaireInput['selectedDirections'] => {
+    const convertDirectionList = (
+      value: AnswerValue | undefined
+    ): QuestionnaireInput['selectedDirections'] => {
       if (Array.isArray(value)) {
         return value
           .map((item) => directionToIdMap.get(item) ?? item)
@@ -136,18 +145,23 @@ export default function QuestionnairePage() {
 
     const convertSingle = (value: AnswerValue | undefined): string => {
       if (typeof value === 'string') return directionToIdMap.get(value) ?? value;
-      if (Array.isArray(value) && value.length > 0) return directionToIdMap.get(value[0]) ?? value[0];
+      if (Array.isArray(value) && value.length > 0)
+        return directionToIdMap.get(value[0]) ?? value[0];
       return '';
     };
 
-    const convertFactorList = (value: AnswerValue | undefined): QuestionnaireInput['topFactors'] =>
+    const convertFactorList = (
+      value: AnswerValue | undefined
+    ): QuestionnaireInput['topFactors'] =>
       Array.isArray(value)
         ? value.filter((item): item is QuestionnaireInput['topFactors'][number] =>
             factorOptionSet.has(item as QuestionnaireInput['topFactors'][number])
           )
         : [];
 
-    const convertRiskList = (value: AnswerValue | undefined): QuestionnaireInput['rejectedRisks'] =>
+    const convertRiskList = (
+      value: AnswerValue | undefined
+    ): QuestionnaireInput['rejectedRisks'] =>
       Array.isArray(value)
         ? value.filter((item): item is QuestionnaireInput['rejectedRisks'][number] =>
             riskOptionSet.has(item as QuestionnaireInput['rejectedRisks'][number])
@@ -155,9 +169,14 @@ export default function QuestionnairePage() {
         : [];
 
     const convertFreeTextList = (value: AnswerValue | undefined): string[] =>
-      Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+      Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : [];
 
-    const convertExactSingle = <T extends string>(value: AnswerValue | undefined, allowed: Set<T>): T | '' => {
+    const convertExactSingle = <T extends string>(
+      value: AnswerValue | undefined,
+      allowed: Set<T>
+    ): T | '' => {
       const normalized = convertSingle(value);
       return allowed.has(normalized as T) ? (normalized as T) : '';
     };
@@ -167,14 +186,29 @@ export default function QuestionnairePage() {
       selfPreferredDirections: convertDirectionList(raw.selfPreferredDirections),
       parentPreferredDirections: convertDirectionList(raw.parentPreferredDirections),
       topFactors: convertFactorList(raw.topFactors),
-      nonNegotiableFactor: convertExactSingle(raw.nonNegotiableFactor, factorOptionSet) as QuestionnaireInput['nonNegotiableFactor'],
+      nonNegotiableFactor: convertExactSingle(
+        raw.nonNegotiableFactor,
+        factorOptionSet
+      ) as QuestionnaireInput['nonNegotiableFactor'],
       parentTopFactors: convertFactorList(raw.parentTopFactors),
       rejectedRisks: convertRiskList(raw.rejectedRisks),
       parentRejectedRisks: convertRiskList(raw.parentRejectedRisks),
-      longTermTradeoffAcceptance: convertExactSingle(raw.longTermTradeoffAcceptance, longTermTradeoffOptionSet) as QuestionnaireInput['longTermTradeoffAcceptance'],
-      learningStyle: convertExactSingle(raw.learningStyle, learningStyleOptionSet) as QuestionnaireInput['learningStyle'],
-      futurePath: convertExactSingle(raw.futurePath, futurePathOptionSet) as QuestionnaireInput['futurePath'],
-      trainingCycleAcceptance: convertExactSingle(raw.trainingCycleAcceptance, trainingCycleOptionSet) as QuestionnaireInput['trainingCycleAcceptance'],
+      longTermTradeoffAcceptance: convertExactSingle(
+        raw.longTermTradeoffAcceptance,
+        longTermTradeoffOptionSet
+      ) as QuestionnaireInput['longTermTradeoffAcceptance'],
+      learningStyle: convertExactSingle(
+        raw.learningStyle,
+        learningStyleOptionSet
+      ) as QuestionnaireInput['learningStyle'],
+      futurePath: convertExactSingle(
+        raw.futurePath,
+        futurePathOptionSet
+      ) as QuestionnaireInput['futurePath'],
+      trainingCycleAcceptance: convertExactSingle(
+        raw.trainingCycleAcceptance,
+        trainingCycleOptionSet
+      ) as QuestionnaireInput['trainingCycleAcceptance'],
       unwantedWorkStyles: convertFreeTextList(raw.unwantedWorkStyles)
     };
   };
@@ -197,59 +231,69 @@ export default function QuestionnairePage() {
   const handleSingleSelect = (option: string) => {
     if (isAdvancing) return;
 
-    const nextAnswers = {
-      ...answers,
-      [currentQuestion.id]: option
-    };
-
+    const nextAnswers = { ...answers, [currentQuestion.id]: option };
     setAnswers(nextAnswers);
     setIsAdvancing(true);
     setSubmitError('');
 
-    if (advanceTimerRef.current) {
-      clearTimeout(advanceTimerRef.current);
-    }
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
 
     advanceTimerRef.current = setTimeout(() => {
       setIsAdvancing(false);
       if (isLastStep) {
         handleSubmit(nextAnswers);
-        return;
+      } else {
+        goNext();
       }
-      goNext();
-    }, 180);
+    }, 200);
   };
 
   useEffect(() => {
     return () => {
-      if (advanceTimerRef.current) {
-        clearTimeout(advanceTimerRef.current);
-      }
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     };
   }, []);
 
+  const selectedCount = Array.isArray(currentValue) ? currentValue.length : 0;
+
   return (
     <ScrollView scrollY className="questionnaire-scroll">
+      {/* Compact Progress Bar */}
+      <View className="questionnaire-progress-bar">
+        <View
+          className="questionnaire-progress-bar__fill"
+          style={{ width: `${progress}%` }}
+        />
+      </View>
+
       <View className="page-shell questionnaire-page">
-        <View className="questionnaire-progress">
-          <Text className="questionnaire-progress__meta">
-            第 {stepIndex + 1} / {questions.length} 题
+        {/* Step Indicator */}
+        <View className="questionnaire-step">
+          <Text className="questionnaire-step__count">
+            {stepIndex + 1}/{questions.length}
           </Text>
-          <Text className="questionnaire-progress__meta">已完成 {progress}%</Text>
-        </View>
-        <View className="progress-bar">
-          <View className="progress-bar__inner" style={{ width: `${progress}%` }} />
+          {isMultiSelect && currentQuestion.min ? (
+            <Text className="questionnaire-step__hint">
+              {selectedCount >= currentQuestion.min
+                ? `已选 ${selectedCount} 项 ✓`
+                : `至少选 ${currentQuestion.min} 项`}
+            </Text>
+          ) : null}
+          {!isMultiSelect ? (
+            <Text className="questionnaire-step__hint">点击选项自动进入下一题</Text>
+          ) : null}
         </View>
 
+        {/* Question Card */}
         <View className="card questionnaire-card">
-          <Text className="page-tag questionnaire-tag">
-            {isMultiSelect ? `请选 ${currentQuestion.min ?? 1}${currentQuestion.max ? ` 到 ${currentQuestion.max}` : ''} 项` : '单选，点一下就会进入下一题'}
-          </Text>
           <Text className="questionnaire-title">{currentQuestion.title}</Text>
           {currentQuestion.description ? (
-            <Text className="questionnaire-description">{currentQuestion.description}</Text>
+            <Text className="questionnaire-description">
+              {currentQuestion.description}
+            </Text>
           ) : null}
 
+          {/* Options */}
           <View className="questionnaire-options">
             {currentQuestion.options.map((option) => {
               const selected =
@@ -260,62 +304,49 @@ export default function QuestionnairePage() {
               return (
                 <View
                   key={option}
-                  className={`questionnaire-option ${selected ? 'is-selected' : ''}`}
+                  className={`questionnaire-option${selected ? ' is-selected' : ''}`}
                   onClick={() =>
                     currentQuestion.type === 'multi-select'
                       ? toggleMulti(option)
                       : handleSingleSelect(option)
                   }
                 >
-                  <View className="questionnaire-option__main">
-                    <Text className="questionnaire-option__label">{option}</Text>
-                    <Text className={`questionnaire-option__pill ${selected ? 'is-selected' : ''}`}>
-                      {selected ? '已选' : isMultiSelect ? '可多选' : '选择'}
-                    </Text>
-                  </View>
+                  <Text className="questionnaire-option__label">{option}</Text>
+                  {selected ? (
+                    <View className="questionnaire-option__check">✓</View>
+                  ) : (
+                    <View className="questionnaire-option__circle" />
+                  )}
                 </View>
               );
             })}
           </View>
 
-          {submitError ? <Text className="questionnaire-error">{submitError}</Text> : null}
-
-          {isMultiSelect ? (
-            <View className="questionnaire-selection-tip">
-              <Text className="questionnaire-selection-tip__text">
-                当前已选 {Array.isArray(currentValue) ? currentValue.length : 0} 项
-              </Text>
-              {currentQuestion.min ? (
-                <Text className="questionnaire-selection-tip__text">
-                  至少选择 {currentQuestion.min} 项后继续
-                </Text>
-              ) : null}
-            </View>
+          {submitError ? (
+            <Text className="questionnaire-error">{submitError}</Text>
           ) : null}
+        </View>
 
-          <View className="questionnaire-actions">
+        {/* Bottom Actions */}
+        <View className="questionnaire-actions bottom-safe-area">
+          <View className="questionnaire-actions__row">
             <Button
               className="button-ghost"
               disabled={stepIndex === 0}
-              onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
+              onClick={goPrev}
             >
-              返回上一题
+              上一题
             </Button>
+
             {isMultiSelect ? (
               <Button
-                className="button-primary"
+                className="button-primary questionnaire-actions__continue"
                 disabled={!canProceed}
                 onClick={() => (isLastStep ? handleSubmit() : goNext())}
               >
                 {isLastStep ? '生成报告' : '继续'}
               </Button>
-            ) : (
-              <View className="questionnaire-actions__hint">
-                <Text className="questionnaire-actions__hint-text">
-                  选中后会自动进入下一题
-                </Text>
-              </View>
-            )}
+            ) : null}
           </View>
         </View>
       </View>
