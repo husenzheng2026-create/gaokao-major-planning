@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "ulimit -n 4096 && rm -rf .next && next dev",
+    "dev:quick": "ulimit -n 4096 && next dev",
     "build": "next build",
     "start": "next start",
+    "preview": "npm run build && npm run start",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
