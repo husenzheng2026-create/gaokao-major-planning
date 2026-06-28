@@ -20,6 +20,7 @@ import {
   trainingCycleOptions
 } from '@/data/questionnaire';
 import { saveReportInput } from '@/lib/session/report-session';
+import { encodeReportInputToToken } from '@/lib/report/report-codec';
 import { questionnaireSchema } from '@/lib/validation/questionnaire-schema';
 import { directionGroupIds } from '@/types/assessment';
 
@@ -68,7 +69,23 @@ function isStepValid(
   return typeof value === 'string' && value.length > 0;
 }
 
-export function QuestionnaireForm({ seed: seedProp }: { seed?: number } = {}) {
+interface QuestionnaireFormProps {
+  seed?: number;
+  mode?: 'default' | 'xhs';
+  introBadge?: string;
+  introTitle?: string;
+  introDescription?: string;
+  submitLabel?: string;
+}
+
+export function QuestionnaireForm({
+  seed: seedProp,
+  mode = 'default',
+  introBadge,
+  introTitle,
+  introDescription,
+  submitLabel
+}: QuestionnaireFormProps = {}) {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswersState>({});
@@ -111,6 +128,7 @@ export function QuestionnaireForm({ seed: seedProp }: { seed?: number } = {}) {
   const canProceed = isStepValid(currentQuestion, currentValue);
   const shouldUseCompactGrid =
     currentQuestion.options.length >= 8 || currentQuestion.id === 'selectedDirections';
+  const finalSubmitLabel = submitLabel ?? (mode === 'xhs' ? '生成正式结果' : '生成报告');
 
   useEffect(() => {
     if (typeof stepCardRef.current?.scrollIntoView === 'function') {
@@ -268,6 +286,12 @@ export function QuestionnaireForm({ seed: seedProp }: { seed?: number } = {}) {
       return;
     }
 
+    if (mode === 'xhs') {
+      const token = encodeReportInputToToken(result.data);
+      router.push(`/xhs/report?answers=${encodeURIComponent(token)}`);
+      return;
+    }
+
     if (typeof window !== 'undefined' && !saveReportInput(result.data)) {
       setSubmitError('当前浏览器无法保存问卷结果，请检查隐私模式或存储权限后重试。');
       return;
@@ -277,6 +301,24 @@ export function QuestionnaireForm({ seed: seedProp }: { seed?: number } = {}) {
 
   return (
     <div className="space-y-8">
+      {introBadge || introTitle || introDescription ? (
+        <section className="rounded-[2rem] border border-amber-200 bg-amber-50 px-5 py-6 shadow-sm md:px-6">
+          {introBadge ? (
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">
+              {introBadge}
+            </p>
+          ) : null}
+          {introTitle ? (
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+              {introTitle}
+            </h1>
+          ) : null}
+          {introDescription ? (
+            <p className="mt-3 text-sm leading-7 text-slate-700">{introDescription}</p>
+          ) : null}
+        </section>
+      ) : null}
+
       <div>
         <div className="flex items-center justify-between text-sm text-slate-500">
           <span>
@@ -377,7 +419,7 @@ export function QuestionnaireForm({ seed: seedProp }: { seed?: number } = {}) {
             disabled={!canProceed}
             className="rounded-full bg-slate-900 px-5 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {isLastStep ? '生成报告' : '下一步'}
+            {isLastStep ? finalSubmitLabel : '下一步'}
           </button>
         </div>
       </QuestionStep>

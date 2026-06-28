@@ -117,8 +117,62 @@ describe('buildReport', () => {
   it('uses clearly different tones for push, keep, and avoid cards', () => {
     const report = buildReport(baseValidPayload);
 
-    expect(report.directionRanking.primary.advisorCard.decisionLine).toMatch(/先把.*认真看透|别急着摊/u);
-    expect(report.directionRanking.secondary?.advisorCard.decisionLine).toMatch(/先留在|别太早当成答案/u);
+    // push: 正向判断，不加"但是"
+    expect(report.directionRanking.primary.advisorCard.decisionLine).toMatch(/可以优先看|更接得住/u);
+    // keep: 中性保留
+    expect(report.directionRanking.secondary?.advisorCard.decisionLine).toMatch(/先留着|别急着.*当成答案/u);
+    // avoid: 明确止损
     expect(report.directionRanking.avoidFirst?.advisorCard.decisionLine).toMatch(/先别|对你不划算/u);
+  });
+
+  // ---- 叙事引擎断言 ----
+
+  it('produces a narrative with 5-6 paragraphs', () => {
+    const report = buildReport(baseValidPayload);
+
+    expect(report.narrative).toBeDefined();
+    expect(report.narrative.length).toBeGreaterThanOrEqual(5);
+    expect(report.narrative.length).toBeLessThanOrEqual(6);
+    expect(report.narrative[0].id).toBe('opening');
+    expect(report.narrative[0].text.length).toBeGreaterThan(0);
+  });
+
+  it('includes avoid paragraph only when avoidFirst exists', () => {
+    const reportWithAvoid = buildReport(baseValidPayload);
+    const hasAvoidParagraph = reportWithAvoid.narrative.some((p) => p.id === 'avoid');
+    expect(hasAvoidParagraph).toBe(true);
+
+    // 只选 2 个方向时不应有 avoid 段落
+    const reportWithoutAvoid = buildReport({
+      ...baseValidPayload,
+      selectedDirections: ['cs-ai', 'engineering-auto'] as unknown as typeof baseValidPayload.selectedDirections
+    });
+    const hasAvoidParagraph2 = reportWithoutAvoid.narrative.some((p) => p.id === 'avoid');
+    expect(hasAvoidParagraph2).toBe(false);
+  });
+
+  it('cross-references primary direction name in multiple paragraphs', () => {
+    const report = buildReport(baseValidPayload);
+    const primaryShortName = report.directionRanking.primary.title.replace(/类$/u, '');
+
+    const mentions = report.narrative.filter((p) => p.text.includes(primaryShortName));
+    expect(mentions.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('opening paragraph has non-empty lead and detail', () => {
+    const report = buildReport(baseValidPayload);
+    const opening = report.narrative.find((p) => p.id === 'opening')!;
+
+    expect(opening.lead.length).toBeGreaterThan(0);
+    expect(opening.detail.length).toBeGreaterThan(0);
+    // lead 应包含人格相关描述或首选方向相关判断
+    expect(opening.lead.length).toBeGreaterThan(10);
+  });
+
+  it('never uses banned words in narrative', () => {
+    const report = buildReport(baseValidPayload);
+    const fullNarrative = report.narrative.map((p) => p.text).join('\n');
+
+    expect(fullNarrative).not.toMatch(/最适合|最优解|精准匹配/);
   });
 });

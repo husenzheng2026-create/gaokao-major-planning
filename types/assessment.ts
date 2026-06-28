@@ -62,3 +62,78 @@ export interface AdvisorDirectionCard {
   mismatchLine: string;
   mismatchType: AdvisorMismatchType;
 }
+
+// ---- 叙事引擎类型 ----
+
+/** 一个叙事段落 */
+export interface NarrativeParagraph {
+  /** 段落标识 */
+  id: NarrativeParagraphId;
+  /** 大标题（最核心的一句判断，加粗突出） */
+  lead: string;
+  /** 补充说明（1-2句，较小字号） */
+  detail: string;
+  /** @deprecated 兼容旧版，等于 lead + '\n' + detail */
+  text: string;
+}
+
+export type NarrativeParagraphId =
+  | 'opening'
+  | 'why-order'
+  | 'primary-cost'
+  | 'vs'
+  | 'avoid'
+  | 'family';
+
+/** 方向关系类型 */
+export type DirectionRelation = 'self-driven' | 'parent-pushed' | 'exploring';
+
+/** 评分后的方向（不含文案，只含结构化数据） */
+export interface ScoredDirection {
+  id: DirectionGroupId;
+  title: string;
+  score: number;
+  mismatchType: AdvisorMismatchType;
+  relation: DirectionRelation;
+  group: DirectionGroup;
+}
+
+/** 方向评分原因信号（供叙事引擎使用） */
+export type ReasonSignal =
+  | { kind: 'self-preferred' }
+  | { kind: 'parent-preferred' }
+  | { kind: 'learning-style-match'; style: string }
+  | { kind: 'growth-potential-high' }
+  | { kind: 'industry-stability' }
+  | { kind: 'factor-align'; factor: string; field: string };
+
+// ---- 市场数据与对比类型 ----
+
+/** 市场数据来源 */
+export interface MarketSource {
+  label: string;
+  url: string;
+  publishedAt: string;
+}
+
+/** 方向组市场现实快照 */
+export interface MarketInsightSnapshot {
+  directionId: DirectionGroupId;
+  title: string;
+  summary: string;
+  employmentScope: string;
+  advancedStudyLoad: string;
+  cityConcentration: string;
+  aiSignal: string;
+  industryMomentum: string;
+  admissionSignal: string;
+  caution: string;
+  decisionNote: string;
+  sources: MarketSource[];
+}
+
+/** 方向对比行 */
+export interface ComparisonRow {
+  label: string;
+  values: string[];
+}

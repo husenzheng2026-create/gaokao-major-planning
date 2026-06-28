@@ -8,8 +8,7 @@ import { directionGroups } from '@/data/direction-groups';
 import {
   directionMarketInsights,
   marketMethodologyNote,
-  type DirectionMarketInsight,
-  type MarketSource
+  type DirectionMarketInsight
 } from '@/data/market-insights';
 import { reportArchetypeCopyMap } from '@/data/report-archetypes';
 import { questionnaireSchema } from '@/lib/validation/questionnaire-schema';
@@ -28,10 +27,18 @@ import {
 } from '@/lib/scoring/scoring-rules';
 import type {
   AdvisorDirectionCard,
+  ComparisonRow,
   DirectionGroup,
   DirectionGroupId,
-  MajorChoiceArchetype
+  MajorChoiceArchetype,
+  MarketInsightSnapshot,
+  MarketSource,
+  NarrativeParagraph,
+  ScoredDirection
 } from '@/types/assessment';
+import { buildNarrative } from '@/lib/scoring/narrative-engine';
+import type { ScoringContext } from '@/lib/scoring/narrative-context';
+import { findDirectionGroup } from '@/lib/scoring/narrative-context';
 
 export type QuestionnaireInput = z.infer<typeof questionnaireSchema>;
 
@@ -52,26 +59,6 @@ export interface RecommendedDirection {
 export interface ActionItem {
   title: string;
   detail: string;
-}
-
-export interface ComparisonRow {
-  label: string;
-  values: string[];
-}
-
-export interface MarketInsightSnapshot {
-  directionId: DirectionGroupId;
-  title: string;
-  summary: string;
-  employmentScope: string;
-  advancedStudyLoad: string;
-  cityConcentration: string;
-  aiSignal: string;
-  industryMomentum: string;
-  admissionSignal: string;
-  caution: string;
-  decisionNote: string;
-  sources: MarketSource[];
 }
 
 export interface DirectionRanking {
@@ -105,6 +92,8 @@ export interface Report {
     methodologyNote: string;
   };
   actions: ActionItem[];
+  /** @since v0.2 — 叙事引擎产出的连续段落，替代旧的独立模块文案 */
+  narrative: NarrativeParagraph[];
 }
 
 const TOP_N = 3;
@@ -860,6 +849,54 @@ export function buildReport(input: QuestionnaireInput): Report {
     ? buildMarketSnapshot(directionRanking.secondary, secondaryGroup, input)
     : null;
 
+  // ---- 组装 ScoringContext → 生成叙事流 ----
+  const scoredDirectionsForContext: ScoredDirection[] = rankedWithAdvisorRoles.map((d) => ({
+    id: d.id,
+    title: d.title,
+    score: d.score,
+    mismatchType: d.advisorCard.mismatchType,
+    relation: detectDirectionRelation(input, d.id),
+    group: findDirectionGroup(d.id)
+  }));
+
+  const avoidGroup = directionRanking.avoidFirst
+    ? findDirectionGroup(directionRanking.avoidFirst.id)
+    : null;
+
+  const familyConflict = {
+    selfPriority: input.nonNegotiableFactor,
+    parentPriority: input.parentTopFactors[0] ?? '就业稳定',
+    hasConflict: input.nonNegotiableFactor !== input.parentTopFactors[0],
+    directionOverlapCount: input.selfPreferredDirections.filter(
+      (id) => input.parentPreferredDirections.includes(id)
+    ).length
+  };
+
+  const scoringContext: ScoringContext = {
+    input,
+    archetype,
+    archetypeSummary: reportArchetypeCopyMap[archetype].hitSentence,
+    ranking: {
+      primary: scoredDirectionsForContext[0],
+      secondary: scoredDirectionsForContext[1] ?? null,
+      avoidFirst: scoredDirectionsForContext.length >= 3
+        ? scoredDirectionsForContext[scoredDirectionsForContext.length - 1]
+        : null
+    },
+    rankedDirections: scoredDirectionsForContext,
+    marketSnapshots: {
+      primary: primaryMarketInsight,
+      secondary: secondaryMarketInsight
+    },
+    methodologyNote: marketMethodologyNote,
+    primaryGroup,
+    secondaryGroup,
+    avoidGroup,
+    familyConflict
+  };
+
+  const narrative = buildNarrative(scoringContext);
+
   return {
     archetype,
     archetypeSummary: reportArchetypeCopyMap[archetype].hitSentence,
@@ -886,6 +923,7 @@ export function buildReport(input: QuestionnaireInput): Report {
       comparisonRows: buildComparisonRows(directionRanking.primary, directionRanking.secondary),
       methodologyNote: marketMethodologyNote
     },
-    actions: buildActionItems(input, directionRanking)
+    actions: buildActionItems(input, directionRanking),
+    narrative
   };
 }
