@@ -2,27 +2,27 @@ import Link from 'next/link';
 
 export default function XhsEntryPage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#ffffff_42%,_#f8fafc)] px-4 py-8 text-slate-900 md:px-6 md:py-10">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed,_#ffffff_42%,_#f8fafc)] px-4 py-6 text-slate-900 md:px-6 md:py-10">
       <div className="mx-auto max-w-4xl space-y-6">
-        <section className="rounded-[2rem] bg-slate-950 px-6 py-8 text-white shadow-xl md:px-8 md:py-10">
+        <section className="rounded-[1.75rem] bg-slate-950 px-5 py-6 text-white shadow-xl md:rounded-[2rem] md:px-8 md:py-10">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-amber-300">
             小红书正式交付入口
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight md:text-5xl">
             高考专业方向轻诊断
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 md:mt-5 md:text-base md:leading-8">
             这是你购买后的正式诊断入口，不是公开体验版。整套流程会帮你先缩小专业方向范围，再给出一份能直接拿去讨论的判断结果。
           </p>
-          <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-200">
+          <div className="mt-6 flex flex-wrap gap-2.5 text-sm text-slate-200 md:mt-8 md:gap-3">
             <span className="rounded-full border border-white/15 px-4 py-2">预计 5 到 8 分钟完成</span>
             <span className="rounded-full border border-white/15 px-4 py-2">输出裁决型方向结果</span>
             <span className="rounded-full border border-white/15 px-4 py-2">附 48 小时行动建议</span>
           </div>
-          <div className="mt-8">
+          <div className="mt-6 md:mt-8">
             <Link
               href="/xhs/questionnaire"
-              className="inline-flex rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-slate-950"
+              className="inline-flex rounded-full bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 md:px-6"
             >
               开始正式诊断
             </Link>

@@ -300,16 +300,16 @@ export function QuestionnaireForm({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {introBadge || introTitle || introDescription ? (
-        <section className="rounded-[2rem] border border-amber-200 bg-amber-50 px-5 py-6 shadow-sm md:px-6">
+        <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-4 py-5 shadow-sm sm:px-5 md:rounded-[2rem] md:px-6 md:py-6">
           {introBadge ? (
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">
               {introBadge}
             </p>
           ) : null}
           {introTitle ? (
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
               {introTitle}
             </h1>
           ) : null}
@@ -347,7 +347,7 @@ export function QuestionnaireForm({
           </p>
         ) : null}
 
-        <div className={shouldUseCompactGrid ? 'grid gap-3 sm:grid-cols-2' : 'space-y-3'}>
+        <div className={shouldUseCompactGrid ? 'grid gap-2.5 sm:grid-cols-2 md:gap-3' : 'space-y-2.5 md:space-y-3'}>
           {currentQuestion.options.map((option) => {
             const inputId = `${currentQuestion.id}-${option}`;
             if (currentQuestion.type === 'multi-select') {
@@ -358,7 +358,9 @@ export function QuestionnaireForm({
                   key={option}
                   htmlFor={inputId}
                   className={`flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 text-slate-700 hover:border-slate-400 ${
-                    shouldUseCompactGrid ? 'px-4 py-2.5 text-[15px] leading-6' : 'px-4 py-3 text-sm'
+                    shouldUseCompactGrid
+                      ? 'px-3.5 py-3 text-sm leading-6 sm:px-4 sm:py-2.5 sm:text-[15px]'
+                      : 'px-3.5 py-3 text-sm sm:px-4'
                   }`}
                 >
                   <input
@@ -378,7 +380,9 @@ export function QuestionnaireForm({
                 key={option}
                 htmlFor={inputId}
                 className={`flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 text-slate-700 hover:border-slate-400 ${
-                  shouldUseCompactGrid ? 'px-4 py-2.5 text-[15px] leading-6' : 'px-4 py-3 text-sm'
+                  shouldUseCompactGrid
+                    ? 'px-3.5 py-3 text-sm leading-6 sm:px-4 sm:py-2.5 sm:text-[15px]'
+                    : 'px-3.5 py-3 text-sm sm:px-4'
                 }`}
               >
                 <input
@@ -404,12 +408,12 @@ export function QuestionnaireForm({
           </p>
         ) : null}
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={goPrev}
             disabled={stepIndex === 0}
-            className="rounded-full border border-slate-300 px-5 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-full border border-slate-300 px-5 py-3 text-sm text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:py-2"
           >
             上一步
           </button>
@@ -417,7 +421,7 @@ export function QuestionnaireForm({
             type="button"
             onClick={goNext}
             disabled={!canProceed}
-            className="rounded-full bg-slate-900 px-5 py-2 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="w-full rounded-full bg-slate-900 px-5 py-3 text-sm text-white disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto sm:py-2"
           >
             {isLastStep ? finalSubmitLabel : '下一步'}
           </button>

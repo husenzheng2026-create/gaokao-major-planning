@@ -38,7 +38,7 @@ describe('XhsReportPage', () => {
       answers: encodePayload(validPayload)
     });
 
-    render(<XhsReportPage />);
+    const { container } = render(<XhsReportPage />);
 
     expect(
       await screen.findByRole('heading', { name: '你的方向判断已经出来了' })
@@ -47,6 +47,11 @@ describe('XhsReportPage', () => {
     expect(screen.getByText('可以留着')).toBeInTheDocument();
     expect(screen.getByText('先别碰')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '接下来 48 小时只做这两步' })).toBeInTheDocument();
+    expect(container.querySelector('main')).toHaveClass('px-4', 'py-6', 'md:py-10');
+    expect(
+      screen.getByRole('heading', { name: '你的方向判断已经出来了' })
+    ).toHaveClass('text-2xl', 'md:text-4xl');
+    expect(screen.getByText('现在优先押').closest('section')).toHaveClass('gap-3', 'md:grid-cols-3');
   });
 
   it('shows recovery guidance when encoded answers are missing', async () => {

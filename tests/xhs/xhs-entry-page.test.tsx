@@ -17,4 +17,19 @@ describe('XhsEntryPage', () => {
       screen.getByRole('link', { name: '开始正式诊断' })
     ).toHaveAttribute('href', '/xhs/questionnaire');
   });
+
+  it('uses tighter mobile-first spacing on the entry hero', () => {
+    const { container } = render(<XhsEntryPage />);
+
+    expect(container.querySelector('main')).toHaveClass('px-4', 'py-6', 'md:py-10');
+    expect(screen.getByText('小红书正式交付入口').closest('section')).toHaveClass(
+      'px-5',
+      'py-6',
+      'md:px-8',
+      'md:py-10'
+    );
+    expect(
+      screen.getByRole('heading', { name: '高考专业方向轻诊断' })
+    ).toHaveClass('text-2xl', 'md:text-5xl');
+  });
 });

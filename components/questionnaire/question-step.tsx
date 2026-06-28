@@ -11,10 +11,10 @@ export function QuestionStep({ title, children, stepRef }: QuestionStepProps) {
   return (
     <section
       ref={stepRef}
-      className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+      className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 md:rounded-3xl md:p-8"
     >
-      <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
-      <div className="mt-6 space-y-4">{children}</div>
+      <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">{title}</h2>
+      <div className="mt-5 space-y-4 md:mt-6">{children}</div>
     </section>
   );
 }

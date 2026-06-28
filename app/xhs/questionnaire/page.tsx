@@ -2,7 +2,7 @@ import { QuestionnaireForm } from '@/components/questionnaire/questionnaire-form
 
 export default function XhsQuestionnairePage() {
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-10">
+    <main className="mx-auto max-w-3xl px-4 py-6 md:max-w-4xl md:px-6 md:py-10">
       <QuestionnaireForm
         mode="xhs"
         seed={20260628}

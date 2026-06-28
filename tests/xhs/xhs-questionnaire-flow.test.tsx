@@ -22,10 +22,20 @@ describe('Xhs questionnaire flow', () => {
   });
 
   it('labels the questionnaire as the paid diagnostic flow', () => {
-    render(<XhsQuestionnairePage />);
+    const { container } = render(<XhsQuestionnairePage />);
 
     expect(screen.getByText(/购买后正式诊断/)).toBeInTheDocument();
     expect(screen.getByText(/完成后会直接生成你的方向判断/)).toBeInTheDocument();
+    expect(container.querySelector('main')).toHaveClass('max-w-3xl', 'py-6', 'md:max-w-4xl');
+    expect(screen.getByText(/购买后正式诊断/).closest('section')).toHaveClass(
+      'px-4',
+      'py-5',
+      'sm:px-5',
+      'md:px-6'
+    );
+    expect(
+      screen.getByRole('heading', { name: '这一轮只帮你做一件事：先把方向范围缩小。' })
+    ).toHaveClass('text-xl', 'sm:text-2xl');
   });
 
   it('navigates to xhs report with encoded answers after the last step', async () => {
